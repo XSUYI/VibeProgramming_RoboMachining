@@ -1,3 +1,3 @@
 Robot Resources:
-* Robot Models and corresponding DH tables
-* List of Tools
+* Available Robot Models and corresponding DH tables
+* List of available end effectors and tools
