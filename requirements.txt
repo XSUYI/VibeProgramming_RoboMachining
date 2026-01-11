@@ -1,0 +1,9 @@
+numpy
+scipy
+pydantic
+fastapi
+uvicorn[standard]
+python-dotenv
+pytest
+roboticstoolbox-python
+openai
