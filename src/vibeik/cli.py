@@ -12,6 +12,9 @@ from .nl_parse import parse_instruction
 from .resources import build_resource_index, load_robot, load_tool
 from .types import SolveResponse
 
+from dotenv import load_dotenv
+load_dotenv()
+
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 RESOURCES_DIR = BASE_DIR / "RobotResources"

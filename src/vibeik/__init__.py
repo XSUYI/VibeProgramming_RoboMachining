@@ -1,6 +1,7 @@
 """Beginner-friendly inverse kinematics assistant."""
 
-from .api import app
-from .cli import main
+# from .api import app
+# from .cli import main
 
-__all__ = ["app", "main"]
+# __all__ = ["app", "main"]
+__all__ = []

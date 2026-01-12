@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
+import os
 from pathlib import Path
 import re
 from typing import Dict, Optional
@@ -24,10 +26,34 @@ class ResourceIndex:
         return self.tools.get(_normalize_name(name))
 
     def match_robot(self, name: str) -> Optional[tuple[str, Path]]:
-        return _match_resource(name, self.robots, self.display_robot_names)
+        match = _match_resource(name, self.robots, self.display_robot_names)
+        if match:
+            return match
+        normalized = _normalize_name(name)
+        for key, display in self.display_robot_names.items():
+            if normalized and normalized in key:
+                return display, self.robots[key]
+        return None
 
     def match_tool(self, name: str) -> Optional[tuple[str, Path]]:
-        return _match_resource(name, self.tools, self.display_tool_names)
+        match = _match_resource(name, self.tools, self.display_tool_names)
+        if match:
+            return match
+        if not os.getenv("OPENAI_API_KEY"):
+            return None
+        if not self.display_tool_names:
+            return None
+        chosen = _llm_pick_candidate(name, list(self.display_tool_names.values()))
+        if not chosen:
+            return None
+        reverse_map = {display: key for key, display in self.display_tool_names.items()}
+        key = reverse_map.get(chosen)
+        if not key:
+            return None
+        path = self.tools.get(key)
+        if not path:
+            return None
+        return chosen, path
 
 
 @dataclass(frozen=True)
@@ -71,6 +97,55 @@ def _match_resource(
     alt_normalized = _normalize_name(alt_name)
     if alt_normalized in resources:
         return display_names[alt_normalized], resources[alt_normalized]
+    return None
+
+
+def _llm_pick_candidate(query: str, candidates: list[str]) -> Optional[str]:
+    if not candidates:
+        return None
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return None
+    try:
+        from openai import OpenAI
+    except ModuleNotFoundError:
+        return None
+    client = OpenAI(api_key=api_key)
+    schema = {
+        "type": "object",
+        "properties": {
+            "tool_id": {
+                "anyOf": [
+                    {"type": "string", "enum": candidates},
+                    {"type": "null"},
+                ]
+            }
+        },
+        "required": ["tool_id"],
+        "additionalProperties": False,
+    }
+    response = client.responses.create(
+    model="gpt-5-mini",
+    input=[
+        {"role": "system", "content": "Select the best matching tool_id from the provided list. Return null if none match."},
+        {"role": "user", "content": f"Query: {query}\nCandidates: {candidates}"},
+    ],
+    text={
+        "format": {
+            "type": "json_schema",
+            "name": "tool_match",
+            "strict": True,
+            "schema": schema,
+        }
+    },
+    )
+    try:
+        payload = json.loads(response.output_text)
+    except json.JSONDecodeError:
+        return None
+    tool_id = payload.get("tool_id")
+    if tool_id in candidates:
+        return tool_id
     return None
 
 

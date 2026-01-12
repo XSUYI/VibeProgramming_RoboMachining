@@ -39,24 +39,24 @@ def _parse_with_llm(text: str, api_key: str) -> ParsedInstruction:
                 "additionalProperties": False,
             },
             "orientation": {
-                "type": ["object", "null"],
+            "anyOf": [
+                {"type": "null"},
+                {
+                "type": "object",
                 "properties": {
-                    "roll": {"type": ["number", "null"]},
-                    "pitch": {"type": ["number", "null"]},
-                    "yaw": {"type": ["number", "null"]},
-                    "quaternion": {
-                        "type": ["array", "null"],
-                        "items": {"type": "number"},
-                        "minItems": 4,
-                        "maxItems": 4,
-                    },
-                    "keyword": {"type": ["string", "null"]},
+                    "roll":  {"type": "number"},
+                    "pitch": {"type": "number"},
+                    "yaw":   {"type": "number"}
                 },
-                "additionalProperties": False,
+                "required": ["roll", "pitch", "yaw"],
+                "additionalProperties": False
+                }
+            ]
             },
+
             "task": {"type": ["string", "null"]},
         },
-        "required": ["robot_model", "tool_name", "target"],
+        "required": ["robot_model", "tool_name", "target", "orientation", "task"],
         "additionalProperties": False,
     }
     response = client.responses.create(
@@ -65,7 +65,14 @@ def _parse_with_llm(text: str, api_key: str) -> ParsedInstruction:
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": text},
         ],
-        response_format={"type": "json_schema", "json_schema": {"name": "ik_intent", "schema": schema}},
+        text={
+            "format": {
+                "type": "json_schema",
+                "name": "ik_intent",
+                "strict": True,
+                "schema": schema,
+            }
+        },
     )
     payload = json.loads(response.output_text)
     orientation = None
