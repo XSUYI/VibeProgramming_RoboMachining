@@ -21,6 +21,8 @@ printf "OPENAI_API_KEY=your-key\n" > .env
 ```
 
 If the key is missing, the fallback parser uses regex/heuristics and supports the example prompt.
+Tool matching is deterministic (exact/normalized/synonym) first, then optionally uses GPT-5 mini to
+select from available tool IDs when `OPENAI_API_KEY` is set.
 
 ## CLI
 
